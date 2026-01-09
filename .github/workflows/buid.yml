@@ -1,0 +1,27 @@
+name: EAS Build {{ github.run_number }} for Preview
+
+on:
+  push:
+    branches: [build-ci]
+  pull_request:
+    branches: [build-ci]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Expo CLI
+        run: npx expo install
+
+      - name: Build for preview
+        run: eas build -p android --profile preview

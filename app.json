@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "atm",
+    "slug": "atm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/fav.png",
+    "scheme": "atm",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/fav.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.doctorpok.atm"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/fav.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/fav.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1687d758-e308-4073-8fcd-26d5112b1428"
+      }
+    },
+    "owner": "doctorpok"
+  }
+}
