@@ -1,4 +1,4 @@
-name: EAS Build {{ github.run_number }} for Preview
+name: EAS Build for Preview
 
 on:
   push:
