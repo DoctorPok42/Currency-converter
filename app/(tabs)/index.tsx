@@ -108,15 +108,16 @@ export default function HomeScreen() {
   };
 
   const formatNumber = (value: string) => {
-    const cleaned = value.replaceAll(/[^0-9.]/g, '');
-    const parts = cleaned.split('.');
-    // Formater la partie entière avec des espaces tous les 3 chiffres
+    const cleaned = value.replaceAll(/[^0-9.,]/g, '');
+    const normalized = cleaned.replace(',', '.');
+    const parts = normalized.split('.');
+    const hasDecimal = parts.length > 1;
     parts[0] = parts[0].replaceAll(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    return parts.join(',');
+    return hasDecimal ? parts[0] + ',' + parts.slice(1).join('').slice(0, 8) : parts[0];
   };
 
   const unformatNumber = (value: string) => {
-    return value.replaceAll(/\s/g, '');
+    return value.replaceAll(/\s/g, '').replace(',', '.');
   };
 
   const handleAmountChange = (value: string) => {
