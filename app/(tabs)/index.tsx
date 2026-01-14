@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
-import { StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, View, Modal, useColorScheme } from 'react-native';
-import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'expo-image';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, useColorScheme, Vibration, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -77,7 +77,7 @@ export default function HomeScreen() {
   const fetchExchangeRates = async () => {
     try {
       setLoading(true);
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
+      const response = await fetch('https://open.er-api.com/v6/latest/EUR');
       const data = await response.json();
       setExchangeRates(data.rates);
       setLoading(false);
@@ -123,6 +123,8 @@ export default function HomeScreen() {
   const handleAmountChange = (value: string) => {
     const formatted = formatNumber(value);
     setAmount(formatted);
+    if (value.length > amount.length)
+      Vibration.vibrate([0, 25, 0, 25], false);
   };
 
   const convertAmount = () => {
