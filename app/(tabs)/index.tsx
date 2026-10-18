@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, useColorScheme, Vibration, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, TouchableOpacity, useColorScheme, Vibration, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,6 +13,11 @@ const currencyToCountry: { [key: string]: string } = {
   NOK: 'no', DKK: 'dk', PLN: 'pl', THB: 'th', IDR: 'id',
   HUF: 'hu', CZK: 'cz', ILS: 'il', CLP: 'cl', PHP: 'ph',
   AED: 'ae', COP: 'co', SAR: 'sa', MYR: 'my', RON: 'ro',
+  TRY: 'tr', NZD: 'nz', SGD: 'sg', HKD: 'hk', TWD: 'tw',
+  VND: 'vn', BDT: 'bd', PKR: 'pk', LKR: 'lk', NGN: 'ng',
+  EGP: 'eg', KES: 'ke', GHS: 'gh', MAD: 'ma', UAH: 'ua',
+  ISK: 'is', BGN: 'bg', GEL: 'ge', QAR: 'qa', KWD: 'kw',
+  BHD: 'bh', OMR: 'om', JOD: 'jo',
 };
 
 const currencySymbols: { [key: string]: string } = {
@@ -22,6 +27,11 @@ const currencySymbols: { [key: string]: string } = {
   NOK: 'kr', DKK: 'kr', PLN: 'zł', THB: '฿', IDR: 'Rp',
   HUF: 'Ft', CZK: 'Kč', ILS: '₪', CLP: '$', PHP: '₱',
   AED: 'د.إ', COP: '$', SAR: '﷼', MYR: 'RM', RON: 'lei',
+  TRY: '₺', NZD: 'NZ$', SGD: 'S$', HKD: 'HK$', TWD: 'NT$',
+  VND: '₫', BDT: '৳', PKR: '₨', LKR: 'Rs', NGN: '₦',
+  EGP: 'E£', KES: 'KSh', GHS: 'GH₵', MAD: 'د.م.', UAH: '₴',
+  ISK: 'kr', BGN: 'лв', GEL: '₾', QAR: '﷼', KWD: 'د.ك',
+  BHD: '.د.ب', OMR: '﷼', JOD: 'د.ا',
 };
 
 const getFlagUrl = (currencyCode: string): string => {
@@ -40,7 +50,18 @@ const currencyNames: { [key: string]: string } = {
   ILS: 'Shekel israélien', CLP: 'Peso chilien', PHP: 'Peso philippin',
   AED: 'Dirham des EAU', COP: 'Peso colombien', SAR: 'Riyal saoudien',
   MYR: 'Ringgit malaisien', RON: 'Leu roumain',
+  TRY: 'Livre turque', NZD: 'Dollar néo-zélandais', SGD: 'Dollar de Singapour',
+  HKD: 'Dollar de Hong Kong', TWD: 'Nouveau dollar taïwanais',
+  VND: 'Đồng vietnamien', BDT: 'Taka bangladais', PKR: 'Roupie pakistanaise',
+  LKR: 'Roupie sri-lankaise', NGN: 'Naira nigérian', EGP: 'Livre égyptienne',
+  KES: 'Shilling kényan', GHS: 'Cedi ghanéen', MAD: 'Dirham marocain',
+  UAH: 'Hryvnia ukrainienne', ISK: 'Couronne islandaise',
+  BGN: 'Lev bulgare', GEL: 'Lari géorgien', QAR: 'Riyal qatari',
+  KWD: 'Dinar koweïtien', BHD: 'Dinar bahreïni', OMR: 'Rial omanais',
+  JOD: 'Dinar jordanien',
 };
+
+const RATE_REFRESH_INTERVAL_MS = 30_000;
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -53,6 +74,8 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
+  const [fromCurrencySearch, setFromCurrencySearch] = useState('');
+  const [toCurrencySearch, setToCurrencySearch] = useState('');
 
   const colors = {
     background: isDark ? '#1a1a1a' : '#f5f5f5',
@@ -65,18 +88,9 @@ export default function HomeScreen() {
     selectedItem: isDark ? '#1e3a5f' : '#e3f2fd',
   };
 
-  useEffect(() => {
-    fetchExchangeRates();
-    loadSavedCurrencies();
-  }, []);
-
-  useEffect(() => {
-    saveCurrencies();
-  }, [fromCurrency, toCurrency]);
-
-  const fetchExchangeRates = async () => {
+  const fetchExchangeRates = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await fetch('https://open.er-api.com/v6/latest/EUR');
       const data = await response.json();
       setExchangeRates(data.rates);
@@ -85,7 +99,7 @@ export default function HomeScreen() {
       console.error('Erreur lors du chargement des taux:', error);
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadSavedCurrencies = async () => {
     try {
@@ -98,14 +112,34 @@ export default function HomeScreen() {
     }
   };
 
-  const saveCurrencies = async () => {
+  const saveCurrencies = useCallback(async () => {
     try {
       await AsyncStorage.setItem('fromCurrency', fromCurrency);
       await AsyncStorage.setItem('toCurrency', toCurrency);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde des devises:', error);
     }
-  };
+  }, [fromCurrency, toCurrency]);
+
+  useEffect(() => {
+    saveCurrencies();
+  }, [saveCurrencies]);
+
+  useEffect(() => {
+    const initialLoadId = setTimeout(() => {
+      fetchExchangeRates();
+      loadSavedCurrencies();
+    }, 0);
+
+    const intervalId = setInterval(() => {
+      fetchExchangeRates(false);
+    }, RATE_REFRESH_INTERVAL_MS);
+
+    return () => {
+      clearTimeout(initialLoadId);
+      clearInterval(intervalId);
+    };
+  }, [fetchExchangeRates]);
 
   const formatNumber = (value: string) => {
     const cleaned = value.replaceAll(/[^0-9.,]/g, '');
@@ -148,14 +182,24 @@ export default function HomeScreen() {
     visible,
     onSelect,
     onClose,
-    selected
+    selected,
+    search,
+    onSearchChange,
   }: {
     visible: boolean;
     onSelect: (code: string) => void;
     onClose: () => void;
     selected: string;
+    search: string;
+    onSearchChange: (value: string) => void;
   }) => {
     if (!visible) return null;
+
+    const normalizedSearch = search.trim().toLocaleLowerCase();
+    const filteredCurrencies = availableCurrencies.filter(code =>
+      code.toLocaleLowerCase().includes(normalizedSearch) ||
+      currencyNames[code].toLocaleLowerCase().includes(normalizedSearch)
+    );
 
     return (
       <Modal
@@ -164,20 +208,41 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={onClose}
       >
-        <View style={styles.pickerOverlay}>
-          <View style={[styles.pickerContainer, { backgroundColor: colors.pickerBackground }]}>
+        <Pressable style={styles.pickerOverlay} onPress={onClose}>
+          <View
+            style={[styles.pickerContainer, { backgroundColor: colors.pickerBackground }]}
+            onStartShouldSetResponder={() => true}
+          >
             <View style={[styles.pickerHeader, { backgroundColor: colors.pickerHeader, borderBottomColor: colors.border }]}>
               <ThemedText type="subtitle">Sélectionner une devise</ThemedText>
               <TouchableOpacity onPress={onClose}>
                 <ThemedText style={styles.closeButton}>✕</ThemedText>
               </TouchableOpacity>
             </View>
+            <TextInput
+              style={[
+                styles.currencySearch,
+                {
+                  backgroundColor: colors.inputBackground,
+                  borderColor: colors.border,
+                  color: colors.inputText,
+                },
+              ]}
+              keyboardType="default"
+              value={search}
+              onChangeText={onSearchChange}
+              placeholder="Rechercher une devise..."
+              placeholderTextColor={isDark ? '#999' : '#777'}
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
             <ScrollView
               style={styles.pickerScroll}
               showsVerticalScrollIndicator={true}
               nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
             >
-              {availableCurrencies.map(code => (
+              {filteredCurrencies.map(code => (
                 <TouchableOpacity
                   key={code}
                   style={[
@@ -203,17 +268,17 @@ export default function HomeScreen() {
               ))}
             </ScrollView>
           </View>
-        </View>
+        </Pressable>
       </Modal>
     );
   };
 
   if (loading) {
     return (
-        <ThemedView style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#b0c956" />
-          <ThemedText style={styles.loadingText}>Chargement des taux...</ThemedText>
-        </ThemedView>
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#b0c956" />
+        <ThemedText style={styles.loadingText}>Chargement des taux...</ThemedText>
+      </ThemedView>
     );
   }
 
@@ -248,7 +313,7 @@ export default function HomeScreen() {
               autoFocus={true}
             />
 
-            <ThemedText style={{  fontSize: 35, opacity: 0.5, height: "100%", textAlignVertical: "center" }}>
+            <ThemedText style={{ fontSize: 35, opacity: 0.5, height: "100%", textAlignVertical: "center" }}>
               {currencySymbols[fromCurrency] || fromCurrency}
             </ThemedText>
           </ThemedView>
@@ -276,7 +341,7 @@ export default function HomeScreen() {
               {convertAmount()}
             </ThemedText>
 
-            <ThemedText style={{  fontSize: 35, opacity: 0.5, height: "100%", textAlignVertical: "center" }}>
+            <ThemedText style={{ fontSize: 35, opacity: 0.5, height: "100%", textAlignVertical: "center" }}>
               {currencySymbols[toCurrency] || toCurrency}
             </ThemedText>
           </ThemedView>
@@ -292,7 +357,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </ThemedView>
 
-        <ThemedView style={{ backgroundColor: "transparent"}}>
+        <ThemedView style={{ backgroundColor: "transparent" }}>
           {fromCurrency !== toCurrency && (
             <ThemedText style={{ textAlign: 'center', fontSize: 16, opacity: 0.8, marginTop: 4 }}>
               1 {fromCurrency} = {formatNumber((exchangeRates[toCurrency] / exchangeRates[fromCurrency]).toFixed(4))} {toCurrency}
@@ -300,15 +365,6 @@ export default function HomeScreen() {
           )}
         </ThemedView>
 
-        {/* button */}
-        <ThemedView style={{ marginTop: 10, backgroundColor: "transparent" }}>
-          <TouchableOpacity
-            style={styles.resultContainer}
-            onPress={fetchExchangeRates}
-          >
-            <ThemedText style={styles.resultLabel}>Mettre à jour les taux</ThemedText>
-          </TouchableOpacity>
-        </ThemedView>
       </ThemedView>
 
       {/* Pickers */}
@@ -316,13 +372,23 @@ export default function HomeScreen() {
         visible={showFromPicker}
         selected={fromCurrency}
         onSelect={setFromCurrency}
-        onClose={() => setShowFromPicker(false)}
+        search={fromCurrencySearch}
+        onSearchChange={setFromCurrencySearch}
+        onClose={() => {
+          setShowFromPicker(false);
+          setFromCurrencySearch('');
+        }}
       />
       <CurrencyPicker
         visible={showToPicker}
         selected={toCurrency}
         onSelect={setToCurrency}
-        onClose={() => setShowToPicker(false)}
+        search={toCurrencySearch}
+        onSearchChange={setToCurrencySearch}
+        onClose={() => {
+          setShowToPicker(false);
+          setToCurrencySearch('');
+        }}
       />
     </>
   );
@@ -330,9 +396,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 30,
+    padding: 22,
     flex: 1,
-    marginTop: 30,
+    marginTop: 40,
   },
   title: {
     textAlign: 'center',
@@ -416,30 +482,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: -3.5,
   },
-  resultContainer: {
-    padding: 14,
-    backgroundColor: '#b0c956',
-    borderRadius: 50,
-    alignItems: 'center',
-  },
-  resultLabel: {
-    fontSize: 16,
-    color: '#121418',
-    fontWeight: '700',
-    opacity: 0.9,
-  },
-  resultAmount: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-    height: 30,
-  },
-  resultRate: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
-  },
   pickerOverlay: {
     position: 'absolute',
     top: 0,
@@ -467,6 +509,14 @@ const styles = StyleSheet.create({
   closeButton: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  currencySearch: {
+    margin: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    borderWidth: 1,
+    borderRadius: 10,
+    fontSize: 16,
   },
   pickerScroll: {
     maxHeight: 400,
